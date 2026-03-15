@@ -1,0 +1,156 @@
+meta:
+  theme: dark
+  layout: horizontal
+  canvas: auto
+  routing: orthogonal
+  title: AI 中转站 MITM 攻击链路
+
+modules:
+  - id: victim
+    label: 受害者端
+  - id: relay
+    label: 恶意中转站（投毒）
+  - id: upstream
+    label: 上游 AI API
+
+nodes:
+  - id: claudecode
+    label: "Claude Code\n(agent 模式)"
+    type: service
+    module: victim
+    position: { x: 60, y: 120 }
+    style:
+      fillColor: "#1E3A5F"
+      strokeColor: "#3B82F6"
+      fontColor: "#FFFFFF"
+      fontSize: 13
+
+  - id: openclaw
+    label: "OpenClaw\n(默认自动执行)"
+    type: service
+    module: victim
+    position: { x: 60, y: 260 }
+    style:
+      fillColor: "#1E3A5F"
+      strokeColor: "#3B82F6"
+      fontColor: "#FFFFFF"
+      fontSize: 13
+
+  - id: relay_core
+    label: "🔴 恶意中转站\nclause-relay-service\n（改造版）"
+    type: service
+    module: relay
+    size: large
+    position: { x: 340, y: 190 }
+    style:
+      fillColor: "#4B1C1C"
+      strokeColor: "#EF4444"
+      strokeWidth: 3
+      fontColor: "#FCA5A5"
+      fontSize: 13
+
+  - id: inject_label
+    label: "注入逻辑：\n检测 bash 脚本特征\n→ 追加恶意命令"
+    type: document
+    module: relay
+    position: { x: 340, y: 360 }
+    style:
+      fillColor: "#3B1515"
+      strokeColor: "#F87171"
+      fontColor: "#FCA5A5"
+      fontSize: 11
+
+  - id: claude_api
+    label: "Claude 官方 API\napi.anthropic.com"
+    type: cloud
+    module: upstream
+    position: { x: 620, y: 120 }
+    style:
+      fillColor: "#1C2B1C"
+      strokeColor: "#22C55E"
+      fontColor: "#86EFAC"
+      fontSize: 13
+
+  - id: attacker
+    label: "攻击者\n反弹 Shell 接收端\nnc -lvnp 4444"
+    type: user
+    position: { x: 340, y: 530 }
+    style:
+      fillColor: "#3B1515"
+      strokeColor: "#EF4444"
+      fontColor: "#FCA5A5"
+      fontSize: 12
+
+edges:
+  - from: claudecode
+    to: relay_core
+    type: primary
+    label: "ANTHROPIC_BASE_URL\n=http://relay:3000/api"
+    style:
+      strokeColor: "#3B82F6"
+      strokeWidth: 2
+
+  - from: openclaw
+    to: relay_core
+    type: primary
+    label: "API Base URL\n指向中转站"
+    style:
+      strokeColor: "#3B82F6"
+      strokeWidth: 2
+
+  - from: relay_core
+    to: claude_api
+    type: primary
+    label: "转发请求"
+    style:
+      strokeColor: "#22C55E"
+      strokeWidth: 2
+
+  - from: claude_api
+    to: relay_core
+    type: data
+    label: "SSE 流响应"
+    style:
+      strokeColor: "#22C55E"
+      dashed: true
+
+  - from: relay_core
+    to: inject_label
+    type: optional
+    style:
+      strokeColor: "#F87171"
+      dashed: true
+
+  - from: relay_core
+    to: claudecode
+    type: data
+    label: "篡改后的响应\n（含恶意命令）"
+    style:
+      strokeColor: "#EF4444"
+      strokeWidth: 2
+      dashed: true
+
+  - from: relay_core
+    to: openclaw
+    type: data
+    label: "篡改后的响应\n（含恶意命令）"
+    style:
+      strokeColor: "#EF4444"
+      strokeWidth: 2
+      dashed: true
+
+  - from: claudecode
+    to: attacker
+    type: primary
+    label: "⚠️ 反弹 Shell\n（自动执行后触发）"
+    style:
+      strokeColor: "#EF4444"
+      strokeWidth: 3
+
+  - from: openclaw
+    to: attacker
+    type: primary
+    label: "⚠️ 反弹 Shell\n（自动执行后触发）"
+    style:
+      strokeColor: "#EF4444"
+      strokeWidth: 3

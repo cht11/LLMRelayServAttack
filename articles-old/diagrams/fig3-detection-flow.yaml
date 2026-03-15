@@ -1,0 +1,178 @@
+meta:
+  theme: tech-blue
+  layout: vertical
+  canvas: auto
+  routing: orthogonal
+  title: 分层自动执行检测决策树
+
+nodes:
+  - id: req_in
+    label: "收到 API 请求"
+    type: terminal
+    position: { x: 300, y: 40 }
+    style:
+      fillColor: "#1E3A5F"
+      strokeColor: "#3B82F6"
+      fontColor: "#FFFFFF"
+      fontSize: 14
+
+  - id: check_ua
+    label: "第一层：UA 检测\nUser-Agent 匹配\nclaude-cli/* ?"
+    type: decision
+    position: { x: 300, y: 160 }
+    style:
+      fillColor: "#EFF6FF"
+      strokeColor: "#3B82F6"
+      strokeWidth: 2
+      fontSize: 12
+
+  - id: check_tools
+    label: "第二层：请求体检测\n包含 Bash tool 声明\n或 tool_result 历史？"
+    type: decision
+    position: { x: 300, y: 320 }
+    style:
+      fillColor: "#EFF6FF"
+      strokeColor: "#3B82F6"
+      strokeWidth: 2
+      fontSize: 12
+
+  - id: check_speed
+    label: "第三层：速度检测\n同 IP 请求间隔\n< 500ms？"
+    type: decision
+    position: { x: 300, y: 480 }
+    style:
+      fillColor: "#EFF6FF"
+      strokeColor: "#3B82F6"
+      strokeWidth: 2
+      fontSize: 12
+
+  - id: mark_agent
+    label: "✅ 标记为\nAI Agent 用户\n（自动执行目标）"
+    type: service
+    position: { x: 600, y: 320 }
+    style:
+      fillColor: "#FEE2E2"
+      strokeColor: "#EF4444"
+      strokeWidth: 3
+      fontColor: "#991B1B"
+      fontSize: 13
+
+  - id: mark_human
+    label: "🔵 标记为\n普通人工用户\n（透明转发，不注入）"
+    type: service
+    position: { x: 300, y: 640 }
+    style:
+      fillColor: "#DCFCE7"
+      strokeColor: "#22C55E"
+      fontColor: "#14532D"
+      fontSize: 13
+
+  - id: inject_action
+    label: "⚠️ 触发注入\n检测响应中的 bash 脚本\n追加恶意命令"
+    type: service
+    position: { x: 600, y: 480 }
+    style:
+      fillColor: "#4B1C1C"
+      strokeColor: "#EF4444"
+      strokeWidth: 3
+      fontColor: "#FCA5A5"
+      fontSize: 13
+
+  - id: transparent
+    label: "📡 透明转发\n正常响应，无篡改"
+    type: service
+    position: { x: 100, y: 640 }
+    style:
+      fillColor: "#F0FDF4"
+      strokeColor: "#22C55E"
+      fontColor: "#14532D"
+      fontSize: 13
+
+  - id: ua_yes
+    label: "是\n(Claude Code UA)"
+    type: document
+    position: { x: 560, y: 180 }
+    style:
+      fillColor: "#FEE2E2"
+      strokeColor: "#EF4444"
+      fontSize: 11
+
+  - id: openclaw_note
+    label: "OpenClaw 特征:\nOpenClaw/* UA\n+ 频繁请求"
+    type: document
+    position: { x: 50, y: 300 }
+    style:
+      fillColor: "#FEF3C7"
+      strokeColor: "#F59E0B"
+      fontColor: "#92400E"
+      fontSize: 11
+
+edges:
+  - from: req_in
+    to: check_ua
+    type: primary
+
+  - from: check_ua
+    to: mark_agent
+    type: primary
+    label: "命中"
+    style:
+      strokeColor: "#EF4444"
+      strokeWidth: 2
+
+  - from: check_ua
+    to: check_tools
+    type: primary
+    label: "未命中"
+    style:
+      strokeColor: "#6B7280"
+
+  - from: check_tools
+    to: mark_agent
+    type: primary
+    label: "命中"
+    style:
+      strokeColor: "#EF4444"
+      strokeWidth: 2
+
+  - from: check_tools
+    to: check_speed
+    type: primary
+    label: "未命中"
+    style:
+      strokeColor: "#6B7280"
+
+  - from: check_speed
+    to: mark_agent
+    type: primary
+    label: "命中"
+    style:
+      strokeColor: "#EF4444"
+      strokeWidth: 2
+
+  - from: check_speed
+    to: mark_human
+    type: primary
+    label: "未命中"
+    style:
+      strokeColor: "#22C55E"
+
+  - from: mark_agent
+    to: inject_action
+    type: primary
+    style:
+      strokeColor: "#EF4444"
+      strokeWidth: 2
+
+  - from: mark_human
+    to: transparent
+    type: primary
+    style:
+      strokeColor: "#22C55E"
+
+  - from: openclaw_note
+    to: check_speed
+    type: optional
+    style:
+      strokeColor: "#F59E0B"
+      dashed: true
